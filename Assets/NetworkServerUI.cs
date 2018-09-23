@@ -9,7 +9,7 @@ using UnityStandardAssets.CrossPlatformInput;
 using UnityEngine;
 
 public class NetworkServerUI : MonoBehaviour {
-	
+	NetworkDiscovery broadcast;
 	CrossPlatformInputManager.VirtualAxis m_HVAxis; 
 	CrossPlatformInputManager.VirtualAxis m_VVAxis; 
 	string horizontalAxisName = "Horizontal"; 
@@ -37,13 +37,14 @@ public class NetworkServerUI : MonoBehaviour {
 		//CrossPlatformInputManager.RegisterVirtualAxis(m_HVAxis);
 		//m_VVAxis = new CrossPlatformInputManager.VirtualAxis(verticalAxisName);
 		//CrossPlatformInputManager.RegisterVirtualAxis(m_VVAxis);
-		
+		broadcast = GetComponent<NetworkDiscovery>();
 		NetworkServer.Listen(25000);
-		NetworkServer.RegisterHandler(888, ServerReceiveMessage);
-		
+		NetworkServer.RegisterHandler(888, ServerReceiveJoystick);
+		broadcast.StartAsServer();
 	}
 
-	private void ServerReceiveMessage(NetworkMessage message)
+
+	private void ServerReceiveJoystick(NetworkMessage message)
 	{
 		StringMessage msg = new StringMessage ();
 		msg.value = message.ReadMessage<StringMessage>().value;
@@ -56,13 +57,26 @@ public class NetworkServerUI : MonoBehaviour {
 		v = Convert.ToSingle(deltas[1]);
 	}	
 
+	private void ServerReceiveCompanionConnection (NetworkMessage message) {
+		StringMessage msg = new StringMessage ();
+		msg.value = message.ReadMessage<StringMessage>().value;
+
+		if (msg.value == "Companion Connected") {
+			GetComponent<NetworkDiscovery>().StopBroadcast();
+		}
+	}
+
 	// Update is called once per frame
 	void Update () {
 		locationTimer += Time.deltaTime;
-		if (locationTimer > 0.5f) {
+		if (locationTimer > 0.1f) {
 			locationTimer = 0;
 			SendLocation();
 			print ("Sending Location");
+		}
+
+		if (NetworkServer.connections.Count <= 0 && !broadcast.isServer) {
+			broadcast.StartAsServer();
 		}
 	}
 
@@ -87,7 +101,7 @@ public class NetworkServerUI : MonoBehaviour {
 		if(NetworkServer.connections.Count > 0)
 		{
 			StringMessage msg = new StringMessage();
-			msg.value = car.transform.position.x + "|" + car.transform.position.y + "|" + car.transform.position.z;
+			msg.value = car.transform.position.x + "|" + car.transform.position.y + "|" + car.transform.position.z + "|" + car.transform.rotation.eulerAngles.x + "|" + car.transform.rotation.eulerAngles.y + "|" + car.transform.rotation.eulerAngles.z;
 
 			NetworkServer.SendToAll(889, msg);
 		}

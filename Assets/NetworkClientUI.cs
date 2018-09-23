@@ -11,6 +11,7 @@ using UnityEngine.UI;
 public class NetworkClientUI : MonoBehaviour {
 
 	public static NetworkClient client;
+	ClientNetworkDiscovery discovery;
 
 	string ipe = "";
 	
@@ -31,8 +32,10 @@ public class NetworkClientUI : MonoBehaviour {
 
 	public State currentState;
 	public Vector3 playerlocation = new Vector3(0,0,0);
+	public Vector3 playerRotation = new Vector3(0,0,0);
 
-	
+	public GameObject minimapMarker;
+	public float markerSpeed, markerRotation;
 	void OnGUI()
     {
         string ipaddress = LocalIPAddress();
@@ -54,14 +57,19 @@ public class NetworkClientUI : MonoBehaviour {
 				GUI.Label (new Rect(Screen.width * 0.5f, Screen.height * 0.5f ,150,100), playerlocation.x.ToString() + " | " + playerlocation.y.ToString() + " | " + playerlocation.z.ToString());
 			}
 		}
-
-		SubGUI();
     }
 
 	// Use this for initialization
 	void Start () {
 		client = new NetworkClient();
 		client.RegisterHandler(889, ClientReceiveLocation);
+		discovery = GetComponent<ClientNetworkDiscovery>();
+		discovery.StartAsClient();
+	}
+
+	void Update () {
+		minimapMarker.transform.position = Vector3.MoveTowards(minimapMarker.transform.position, playerlocation, markerSpeed * Time.deltaTime);
+		minimapMarker.transform.rotation = Quaternion.RotateTowards (minimapMarker.transform.rotation, Quaternion.Euler(playerRotation), markerRotation * Time.deltaTime);
 	}
 
 	void Connect()
@@ -69,8 +77,8 @@ public class NetworkClientUI : MonoBehaviour {
 		client.Connect(ipe, 25000);
 	}
 
-	public virtual void SubGUI () {
-
+	public void Connect (string ipa) {
+		client.Connect(ipa, 25000);
 	}
 
 	public string LocalIPAddress()
@@ -114,7 +122,11 @@ public class NetworkClientUI : MonoBehaviour {
 		float y = Convert.ToSingle(deltas[1]);
 		float z = Convert.ToSingle(deltas[2]);
 
+		float rx = Convert.ToSingle(deltas[3]);
+		float ry = Convert.ToSingle(deltas[4]);
+		float rz = Convert.ToSingle(deltas[5]);
 		playerlocation = new Vector3(x,y,z);
+		playerRotation = new Vector3(rx, ry, rz);
 	}
 
 	public void ChangeState () {
